@@ -1,0 +1,83 @@
+name: Check updates
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron:  '0 1 * * 5'
+
+jobs:
+  fetch-current-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: oprypin/find-latest-tag@v1
+        id: version
+        with:
+          repository: ${{ github.repository }}
+
+  fetch-latest-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: oprypin/find-latest-tag@v1
+        id: version
+        with:
+          repository: PixelToast/puro
+          releases-only: true
+
+  update-formula:
+    needs: [fetch-current-version, fetch-latest-version]
+    if: needs.fetch-current-version.outputs.version != needs.fetch-latest-version.outputs.version
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_DEVELOPER: 1
+      HOMEBREW_FORCE_HOMEBREW_ON_LINUX: 1
+      HOMEBREW_NO_ANALYTICS: 1
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      CURRENT_VERSION: ${{ needs.fetch-current-version.outputs.version }}
+      LATEST_VERSION: ${{ needs.fetch-latest-version.outputs.version }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Enable Homebrew
+        run: echo /home/linuxbrew/.linuxbrew/bin >> $GITHUB_PATH
+
+      - name: Evaluate cache variables
+        run: |
+          HOMEBREW_REPOSITORY="$(brew --repo)"
+          GEMS_PATH="$HOMEBREW_REPOSITORY/Library/Homebrew/vendor/bundle/ruby/"
+          GEMS_HASH="$(shasum -a 256 "$HOMEBREW_REPOSITORY/Library/Homebrew/Gemfile.lock" | cut -f1 -d' ')"
+
+          echo "gems-path=$GEMS_PATH" >> "$GITHUB_ENV"
+          echo "gems-hash=$GEMS_HASH" >> "$GITHUB_ENV"
+
+      - name: Cache Homebrew Bundler RubyGems
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.gems-path }}
+          key: ${{ runner.os }}-rubygems-${{ env.gems-hash }}
+          restore-keys: ${{ runner.os }}-rubygems-
+
+      - name: Install Homebrew Bundler RubyGems
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: brew install-bundler-gems
+
+      - name: Setup tap
+        run: |
+          mkdir -p "$(dirname $(brew --repository ${{ github.repository }}))"
+          ln -s $GITHUB_WORKSPACE $(brew --repository ${{ github.repository }})
+
+      - name: Update Formula
+        run: brew bump-formula-pr puro --version $LATEST_VERSION --no-fork --write-only
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Update Puro to v${{ env.LATEST_VERSION }}
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          tagging_message: ${{ env.LATEST_VERSION }}
