@@ -24,7 +24,7 @@ jobs:
       - uses: oprypin/find-latest-tag@v1
         id: version
         with:
-          repository: PixelToast/puro
+          repository: pingbird/puro
           releases-only: true
 
   update-formula:
