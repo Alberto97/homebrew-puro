@@ -1,8 +1,8 @@
 class Puro < Formula
   desc "Powerful tool for installing and upgrading Flutter versions"
   homepage "https://puro.dev/"
-  url "https://puro.dev/builds/1.3.5/darwin-x64/puro"
-  sha256 "18630c0f3940bd638cc902f97c71f5ad4ca05367e151769b41857093ed07d46a"
+  url "https://puro.dev/builds/1.3.6/darwin-x64/puro"
+  sha256 "3602621edbb89452cd97334dc4649bf8605db23770af18fcc7ef7f4ab6c777b3"
   license "BSD-3-Clause"
 
   def install
