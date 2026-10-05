@@ -71,6 +71,7 @@ jobs:
         run: |
           mkdir -p "$(dirname $(brew --repository ${{ github.repository }}))"
           ln -s $GITHUB_WORKSPACE $(brew --repository ${{ github.repository }})
+          brew trust ${{ github.repository }}
 
       - name: Update Formula
         run: brew bump-formula-pr puro --version $LATEST_VERSION --no-fork --write-only
